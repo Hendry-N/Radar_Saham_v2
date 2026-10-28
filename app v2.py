@@ -32,15 +32,28 @@ st.set_page_config(
 # Custom CSS
 st.markdown("""
 <style>
+    #MainMenu { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+    header [data-testid="stHeader"] { visibility: hidden !important; height: 0 !important; }
+    [data-testid="stToolbar"] { visibility: hidden !important; display: none !important; }
+    [data-testid="stDecoration"] { display: none !important; }
+    [data-testid="stStatusWidget"] { visibility: hidden !important; }
+    .stDeployButton { display: none !important; }
+    footer:after { content: "" !important; display: none !important; }
     .quick-alert-box { padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
     .quick-alert-buy { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); border: 2px solid #10b981; color: #ffffff; }
     .quick-alert-sell { background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); border: 2px solid #ef4444; color: #ffffff; }
-    .signal-card { padding: 20px 24px; border-radius: 14px; margin-bottom: 22px; text-align: center; }
-    .signal-buy { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); color: #ffffff; border: 2px solid #10b981; }
-    .signal-sell { background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); color: #ffffff; border: 2px solid #ef4444; }
-    .signal-hold { background: linear-gradient(135deg, #78350f 0%, #92400e 100%); color: #ffffff; border: 2px solid #f59e0b; }
+    .signal-card { padding: 24px 28px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); text-align: center; }
+    .signal-buy { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); color: #ffffff; border: 2px solid #10b981; box-shadow: 0 0 25px rgba(16, 185, 129, 0.25); }
+    .signal-sell { background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); color: #ffffff; border: 2px solid #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.25); }
+    .signal-hold { background: linear-gradient(135deg, #78350f 0%, #92400e 100%); color: #ffffff; border: 2px solid #f59e0b; box-shadow: 0 0 25px rgba(245, 158, 11, 0.2); }
     .signal-title { font-size: 26px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 8px; text-transform: uppercase; }
-    .signal-desc { font-size: 14px; font-weight: 500; line-height: 1.5; max-width: 800px; margin: 0 auto; }
+    .signal-desc { font-size: 14.5px; font-weight: 500; line-height: 1.6; max-width: 820px; margin: 0 auto; color: #f1f5f9; }
+    .signal-metrics-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.15); }
+    .signal-chip { background: rgba(0, 0, 0, 0.35); padding: 4px 12px; border-radius: 8px; font-size: 11.5px; font-family: monospace; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.1); }
+    [data-testid="stMetric"] { background: linear-gradient(145deg, #0b1120 0%, #0f172a 100%); border: 1px solid #1e293b; padding: 14px 16px; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+    [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; }
+    h1, .stTitle, [data-testid="stHeadingWithActionElements"] h1 { font-size: 28px !important; font-weight: 800 !important; letter-spacing: -0.5px !important; margin-bottom: 4px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -123,6 +136,14 @@ def save_row_to_gsheets(row_dict: dict, worksheet_name="Jurnal_Harian"):
 
 # Sidebar
 st.sidebar.header("🔍 Konfigurasi Analisis Saham")
+
+with st.sidebar.expander("📊 Menu: Hubungkan Google Sheets", expanded=False):
+    conn_active = get_gsheets_connection()
+    if conn_active is not None:
+        st.success("🟢 Google Sheets Terhubung via Secrets (st.connection).")
+    else:
+        st.info("💡 Hubungkan Google Sheets via Secrets Streamlit Cloud untuk simpan permanen tab 'Watchlist' & 'Jurnal_Harian'.")
+
 st.sidebar.subheader("⭐ My Watchlist")
 watchlist_options = [f"{item['ticker']} - {item['name'][:18]}" for item in st.session_state.watchlist]
 current_selection_index = 0
@@ -222,11 +243,17 @@ with tab_radar:
         st.title(f"Radar Anomali Bandar - {stock_name_input} ({ticker_input})")
         st.markdown(f"""
         <div class="signal-card {signal_class}">
-            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.85; margin-bottom: 4px;">
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.85; margin-bottom: 6px;">
                 HASIL EVALUASI RULE-BASED EXPERT SYSTEM • {latest_date}
             </div>
             <div class="signal-title">{badge_label}</div>
             <div class="signal-desc">{signal_message}</div>
+            <div class="signal-metrics-row">
+                <span class="signal-chip">📈 Rasio Vol: {curr_vol_ratio:.1f}%</span>
+                <span class="signal-chip">🟢 Top 3 Buyer: {top3_buyer:.1f}%</span>
+                <span class="signal-chip">🔴 Top 3 Seller: {top3_seller:.1f}%</span>
+                <span class="signal-chip">🎯 Rentang ATR-14: Rp {curr_atr14:,.1f}</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -294,6 +321,36 @@ with tab_radar:
         fig.add_trace(go.Scatter(x=df.index, y=df['MA20_Volume'], line=dict(color='#f59e0b', width=2), name="MA-20 Vol"), row=2, col=1)
         fig.update_layout(height=600, margin=dict(l=15, r=15, t=35, b=15), xaxis_rangeslider_visible=False, paper_bgcolor="#090d16", plot_bgcolor="#090d16")
         st.plotly_chart(fig, use_container_width=True)
+
+        # TABEL DATAFRAME HISTORIS (10 HARI TERAKHIR)
+        st.subheader("📋 Tabel Data Historis & Kalkulasi Anomali (10 Hari Terakhir)")
+        st.caption("Menampilkan data terbaru di urutan paling atas beserta kalkulasi otomatis MA-20 Volume, Rasio Volume (%), dan ATR-14.")
+
+        df_recent = df.tail(10).copy()
+        df_recent = df_recent.sort_index(ascending=False)
+
+        display_df = pd.DataFrame({
+            "Tanggal": df_recent.index.strftime("%d-%m-%Y"),
+            "Open": df_recent['Open'].map(lambda x: f"{x:,.0f}"),
+            "High": df_recent['High'].map(lambda x: f"{x:,.0f}"),
+            "Low": df_recent['Low'].map(lambda x: f"{x:,.0f}"),
+            "Close": df_recent['Close'].map(lambda x: f"{x:,.0f}"),
+            "Perubahan (%)": df_recent['Price_Change_Pct'].map(lambda x: f"{x:+.2f}%" if pd.notnull(x) else "-"),
+            "Volume": df_recent['Volume'].map(lambda x: f"{x:,.0f}"),
+            "MA-20 Vol": df_recent['MA20_Volume'].map(lambda x: f"{x:,.0f}" if pd.notnull(x) else "-"),
+            "Rasio Vol (%)": df_recent['Volume_Ratio'].map(lambda x: f"{x:.1f}%" if pd.notnull(x) else "-"),
+            "ATR (14)": df_recent['ATR_14'].map(lambda x: f"{x:,.1f}" if pd.notnull(x) else "-"),
+        })
+
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+        csv_data = df_recent.to_csv(index=True).encode('utf-8')
+        st.download_button(
+            label="📥 Download Data Historis (CSV)",
+            data=csv_data,
+            file_name=f"{ticker_input}_anomali_bandar.csv",
+            mime="text/csv"
+        )
 
 # TAB 2: JURNAL TRADING (DATABASE LENGKAP DENGAN FILTER KODE SAHAM)
 with tab_jurnal:
