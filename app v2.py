@@ -51,7 +51,37 @@ st.markdown("""
     .signal-desc { font-size: 14.5px; font-weight: 500; line-height: 1.6; max-width: 820px; margin: 0 auto; color: #f1f5f9; }
     .signal-metrics-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.15); }
     .signal-chip { background: rgba(0, 0, 0, 0.35); padding: 4px 12px; border-radius: 8px; font-size: 11.5px; font-family: monospace; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.1); }
-    [data-testid="stMetric"] { background: linear-gradient(145deg, #0b1120 0%, #0f172a 100%); border: 1px solid #1e293b; padding: 14px 16px; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+    .metric-custom-card { padding: 16px 18px; border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,0.25); min-height: 115px; }
+    .metric-custom-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .metric-custom-value { font-size: 22px; font-weight: 800; font-family: monospace; letter-spacing: -0.5px; color: #ffffff; margin-bottom: 8px; }
+    .metric-custom-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; display: inline-block; }
+    .metric-card-bull { background: linear-gradient(135deg, rgba(6, 78, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid #10b981; }
+    .metric-card-bull .metric-custom-label { color: #6ee7b7; }
+    .metric-card-bull .metric-custom-badge { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .metric-card-bear { background: linear-gradient(135deg, rgba(127, 29, 29, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid #ef4444; }
+    .metric-card-bear .metric-custom-label { color: #fca5a5; }
+    .metric-card-bear .metric-custom-badge { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .metric-card-amber-surge { background: linear-gradient(135deg, rgba(120, 53, 15, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 0.25); }
+    .metric-card-amber-surge .metric-custom-label { color: #fcd34d; }
+    .metric-card-amber-surge .metric-custom-badge { background: rgba(245, 158, 11, 0.25); color: #fbbf24; }
+    .metric-card-amber-normal { background: linear-gradient(135deg, rgba(120, 53, 15, 0.4) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .metric-card-amber-normal .metric-custom-label { color: #fcd34d; }
+    .metric-card-amber-normal .metric-custom-badge { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; }
+    .metric-card-cyan { background: linear-gradient(135deg, rgba(14, 116, 144, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid #06b6d4; }
+    .metric-card-cyan .metric-custom-label { color: #67e8f9; }
+    .metric-card-cyan .metric-custom-badge { background: rgba(6, 182, 212, 0.2); color: #22d3ee; }
+    .metric-card-buyer-dom { background: linear-gradient(135deg, rgba(6, 95, 70, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid #10b981; }
+    .metric-card-buyer-dom .metric-custom-label { color: #6ee7b7; }
+    .metric-card-buyer-dom .metric-custom-badge { background: rgba(16, 185, 129, 0.25); color: #34d399; }
+    .metric-card-buyer-norm { background: linear-gradient(135deg, rgba(6, 95, 70, 0.4) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .metric-card-buyer-norm .metric-custom-label { color: #6ee7b7; }
+    .metric-card-buyer-norm .metric-custom-badge { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; }
+    .metric-card-seller-dom { background: linear-gradient(135deg, rgba(153, 27, 27, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid #ef4444; }
+    .metric-card-seller-dom .metric-custom-label { color: #fca5a5; }
+    .metric-card-seller-dom .metric-custom-badge { background: rgba(239, 68, 68, 0.25); color: #f87171; }
+    .metric-card-seller-norm { background: linear-gradient(135deg, rgba(153, 27, 27, 0.4) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(239, 68, 68, 0.3); }
+    .metric-card-seller-norm .metric-custom-label { color: #fca5a5; }
+    .metric-card-seller-norm .metric-custom-badge { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; }
     [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; }
     h1, .stTitle, [data-testid="stHeadingWithActionElements"] h1 { font-size: 28px !important; font-weight: 800 !important; letter-spacing: -0.5px !important; margin-bottom: 4px !important; }
 </style>
@@ -258,11 +288,25 @@ with tab_radar:
         """, unsafe_allow_html=True)
 
         m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Harga Terakhir", f"Rp {curr_close:,.0f}", f"{curr_price_change:+.2f}%")
-        m2.metric("Rasio Volume vs MA20", f"{curr_vol_ratio:.1f}%", "Lonjakan Anomali" if curr_vol_ratio > 150 else "Normal")
-        m3.metric("ATR 14 Hari", f"Rp {curr_atr14:,.1f}")
-        m4.metric("Top 3 Buyer", f"{top3_buyer:.1f}%")
-        m5.metric("Top 3 Seller", f"{top3_seller:.1f}%")
+        price_grad = "metric-card-bull" if curr_price_change >= 0 else "metric-card-bear"
+        price_icon = "▲" if curr_price_change >= 0 else "▼"
+        price_sign = "+" if curr_price_change >= 0 else ""
+        with m1:
+            st.markdown(f'<div class="metric-custom-card {price_grad}"><div class="metric-custom-label">Harga Terakhir</div><div class="metric-custom-value">Rp {curr_close:,.0f}</div><div class="metric-custom-badge">{price_icon} {price_sign}{curr_price_change:.2f}%</div></div>', unsafe_allow_html=True)
+        vol_grad = "metric-card-amber-surge" if curr_vol_ratio > 150 else "metric-card-amber-normal"
+        vol_badge = "⚠️ Lonjakan Anomali" if curr_vol_ratio > 150 else "Aktivitas Normal"
+        with m2:
+            st.markdown(f'<div class="metric-custom-card {vol_grad}"><div class="metric-custom-label">Rasio Volume vs MA20</div><div class="metric-custom-value">{curr_vol_ratio:.1f}%</div><div class="metric-custom-badge">{vol_badge}</div></div>', unsafe_allow_html=True)
+        with m3:
+            st.markdown(f'<div class="metric-custom-card metric-card-cyan"><div class="metric-custom-label">ATR 14 (Volatilitas)</div><div class="metric-custom-value">Rp {curr_atr14:,.1f}</div><div class="metric-custom-badge">Rentang Fluktuasi Wajar</div></div>', unsafe_allow_html=True)
+        buyer_badge = "🔥 Dominan Akumulasi" if top3_buyer > 50 else "Normal (< 50%)"
+        buyer_grad = "metric-card-buyer-dom" if top3_buyer > 50 else "metric-card-buyer-norm"
+        with m4:
+            st.markdown(f'<div class="metric-custom-card {buyer_grad}"><div class="metric-custom-label">Top 3 Buyer</div><div class="metric-custom-value">{top3_buyer:.1f}%</div><div class="metric-custom-badge">{buyer_badge}</div></div>', unsafe_allow_html=True)
+        seller_badge = "⚠️ Tekanan Distribusi" if top3_seller > 50 else "Terkendali (< 50%)"
+        seller_grad = "metric-card-seller-dom" if top3_seller > 50 else "metric-card-seller-norm"
+        with m5:
+            st.markdown(f'<div class="metric-custom-card {seller_grad}"><div class="metric-custom-label">Top 3 Seller</div><div class="metric-custom-value">{top3_seller:.1f}%</div><div class="metric-custom-badge">{seller_badge}</div></div>', unsafe_allow_html=True)
 
         st.markdown("---")
         st.subheader("💾 Form Input Harian (Catat ke Database Google Sheets)")
