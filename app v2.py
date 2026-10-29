@@ -103,20 +103,34 @@ if "active_ticker" not in st.session_state:
     st.session_state.active_ticker = "BBCA.JK"
 if "active_name" not in st.session_state:
     st.session_state.active_name = "Bank Central Asia Tbk"
+if "top3_buyer_codes" not in st.session_state:
+    st.session_state.top3_buyer_codes = "ZP, BK, AK"
+if "net_buy_lot_top3" not in st.session_state:
+    st.session_state.net_buy_lot_top3 = 150000
+if "top3_seller_codes" not in st.session_state:
+    st.session_state.top3_seller_codes = "YP, CC, XL"
+if "net_sell_lot_top3" not in st.session_state:
+    st.session_state.net_sell_lot_top3 = 45000
+if "freq_input" not in st.session_state:
+    st.session_state.freq_input = 3500
 if "db_local_backup" not in st.session_state:
     st.session_state.db_local_backup = [
         {
             "Timestamp": "2026-10-14 16:15:00", "Tanggal": "2026-10-14", "Ticker": "BBCA.JK",
             "Nama Emiten": "Bank Central Asia Tbk", "Close": 10250.0, "Change %": 2.50,
-            "Volume Ratio %": 210.0, "ATR 14": 185.0, "Frekuensi": 24500, "Top 3 Buyer %": 58.5,
-            "Top 3 Seller %": 32.0, "Sinyal Aksi": "BUY (Akumulasi Besar)",
+            "Volume Ratio %": 210.0, "ATR 14": 185.0, "Frekuensi": 24500,
+            "Top 3 Buyer Broker": "ZP, BK, AK", "Top 3 Buyer Lot": 150000, "Top 3 Buyer %": 58.5,
+            "Top 3 Seller Broker": "YP, CC, XL", "Top 3 Seller Lot": 45000, "Top 3 Seller %": 32.0,
+            "Sinyal Aksi": "BUY (Akumulasi Besar)",
             "Catatan Trader": "Akumulasi masif oleh top 3 broker lokal & asing. Siapkan cicil beli."
         },
         {
             "Timestamp": "2026-10-13 16:05:00", "Tanggal": "2026-10-13", "Ticker": "BBRI.JK",
             "Nama Emiten": "Bank Rakyat Indonesia Tbk", "Close": 4920.0, "Change %": -1.80,
-            "Volume Ratio %": 225.0, "ATR 14": 95.0, "Frekuensi": 31200, "Top 3 Buyer %": 34.0,
-            "Top 3 Seller %": 62.5, "Sinyal Aksi": "SELL (Distribusi Guyuran)",
+            "Volume Ratio %": 225.0, "ATR 14": 95.0, "Frekuensi": 31200,
+            "Top 3 Buyer Broker": "BK, CC, PD", "Top 3 Buyer Lot": 68000, "Top 3 Buyer %": 34.0,
+            "Top 3 Seller Broker": "YP, CP, NI", "Top 3 Seller Lot": 125000, "Top 3 Seller %": 62.5,
+            "Sinyal Aksi": "SELL (Distribusi Guyuran)",
             "Catatan Trader": "Tekanan seller dominan. Amankan profit atau pasang trailing stop."
         }
     ]
@@ -200,10 +214,23 @@ period_map = {"3 Bulan": "3mo", "6 Bulan": "6mo", "1 Tahun": "1y"}
 selected_period = period_map[timeframe_option]
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("📊 Input Manual Bandarmologi")
-freq_input = st.sidebar.number_input("Total Frekuensi (kali)", min_value=0, value=24500, step=500)
-top3_buyer = st.sidebar.number_input("Dominasi Top 3 Buyer (%)", min_value=0.0, max_value=100.0, value=58.5, step=0.5)
-top3_seller = st.sidebar.number_input("Dominasi Top 3 Seller (%)", min_value=0.0, max_value=100.0, value=32.0, step=0.5)
+
+# Form Input Broker Summary Harian (Manual Input & Simpan Database)
+with st.sidebar.form(key="brosum_form"):
+    st.subheader("📊 Input Broker Summary Harian")
+    st.caption("Data Broker Summary harian diisi manual dari RTI / Data Sekuritas:")
+    top3_buyer_codes = st.text_input("1. Kode Top 3 Buyer:", value=st.session_state.get("top3_buyer_codes", "ZP, BK, AK"), placeholder="Contoh: ZP, BK, AK").strip().upper()
+    net_buy_lot_top3 = st.number_input("2. Total Net Buy Lot Top 3 (Lot):", min_value=0, value=int(st.session_state.get("net_buy_lot_top3", 150000)), step=1000)
+    top3_seller_codes = st.text_input("3. Kode Top 3 Seller:", value=st.session_state.get("top3_seller_codes", "YP, CC, XL"), placeholder="Contoh: YP, CC, XL").strip().upper()
+    net_sell_lot_top3 = st.number_input("4. Total Net Sell Lot Top 3 (Lot):", min_value=0, value=int(st.session_state.get("net_sell_lot_top3", 45000)), step=1000)
+    freq_input = st.number_input("5. Total Frekuensi Transaksi Harian:", min_value=0, value=int(st.session_state.get("freq_input", 3500)), step=100)
+    submit_brosum = st.form_submit_button("🚀 Analisa & Simpan ke Database", use_container_width=True)
+
+st.session_state.top3_buyer_codes = top3_buyer_codes
+st.session_state.net_buy_lot_top3 = net_buy_lot_top3
+st.session_state.top3_seller_codes = top3_seller_codes
+st.session_state.net_sell_lot_top3 = net_sell_lot_top3
+st.session_state.freq_input = freq_input
 
 quick_alert_enabled = st.sidebar.checkbox("🔔 Quick-Alert Otomatis Aktif", value=True)
 if st.sidebar.button("🔄 Refresh Data & Analisis Radar", use_container_width=True):
@@ -266,9 +293,45 @@ with tab_radar:
         curr_atr14 = float(latest['ATR_14']) if not np.isnan(latest['ATR_14']) else 0.0
         curr_price_change = float(latest['Price_Change_Pct']) if not np.isnan(latest['Price_Change_Pct']) else 0.0
 
+        # Konversi Volume Harian yfinance ke Lot (1 Lot = 100 lembar di BEI)
+        curr_vol_shares = float(latest['Volume']) if not np.isnan(latest['Volume']) else 0.0
+        curr_vol_lot = curr_vol_shares / 100.0 if curr_vol_shares > 0 else 1.0
+
+        # Logika otomatis: % Dominasi = (Total Net Lot Top 3 / Total Vol yfinance Lot) * 100%
+        top3_buyer_pct = (float(net_buy_lot_top3) / curr_vol_lot * 100.0) if curr_vol_lot > 0 else 0.0
+        top3_seller_pct = (float(net_sell_lot_top3) / curr_vol_lot * 100.0) if curr_vol_lot > 0 else 0.0
+
         signal, signal_class, badge_label, signal_message = evaluate_bandar_anomaly(
-            curr_vol_ratio, curr_price_change, curr_open, curr_close, top3_buyer, top3_seller
+            curr_vol_ratio, curr_price_change, curr_open, curr_close, top3_buyer_pct, top3_seller_pct
         )
+
+        if submit_brosum:
+            new_brosum_row = {
+                "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Tanggal": str(date.today()),
+                "Ticker": ticker_input,
+                "Nama Emiten": stock_name_input,
+                "Close": curr_close,
+                "Change %": round(curr_price_change, 2),
+                "Volume Ratio %": round(curr_vol_ratio, 2),
+                "ATR 14": round(curr_atr14, 2),
+                "Frekuensi": int(freq_input),
+                "Top 3 Buyer Broker": top3_buyer_codes,
+                "Top 3 Buyer Lot": int(net_buy_lot_top3),
+                "Top 3 Buyer %": round(top3_buyer_pct, 2),
+                "Top 3 Seller Broker": top3_seller_codes,
+                "Top 3 Seller Lot": int(net_sell_lot_top3),
+                "Top 3 Seller %": round(top3_seller_pct, 2),
+                "Sinyal Aksi": signal,
+                "Catatan Trader": f"Brosum Form: Buyer [{top3_buyer_codes}] {int(net_buy_lot_top3):,} lot ({top3_buyer_pct:.1f}%), Seller [{top3_seller_codes}] {int(net_sell_lot_top3):,} lot ({top3_seller_pct:.1f}%). Sinyal: {signal}"
+            }
+            saved_ok, save_info, _ = save_row_to_gsheets(new_brosum_row, worksheet_name="Jurnal_Harian")
+            if saved_ok:
+                st.sidebar.success("✅ Tersimpan ke Google Sheets!")
+                st.success(f"🎉 **Data Berhasil Disimpan ke Google Sheets!** ({save_info})")
+            else:
+                st.sidebar.info("ℹ️ Tersimpan di memori lokal.")
+                st.info(f"ℹ️ {save_info}")
 
         st.title(f"Radar Anomali Bandar - {stock_name_input} ({ticker_input})")
         st.markdown(f"""
@@ -280,8 +343,8 @@ with tab_radar:
             <div class="signal-desc">{signal_message}</div>
             <div class="signal-metrics-row">
                 <span class="signal-chip">📈 Rasio Vol: {curr_vol_ratio:.1f}%</span>
-                <span class="signal-chip">🟢 Top 3 Buyer: {top3_buyer:.1f}%</span>
-                <span class="signal-chip">🔴 Top 3 Seller: {top3_seller:.1f}%</span>
+                <span class="signal-chip">🟢 Top 3 Buyer: {top3_buyer_pct:.1f}% ({top3_buyer_codes})</span>
+                <span class="signal-chip">🔴 Top 3 Seller: {top3_seller_pct:.1f}% ({top3_seller_codes})</span>
                 <span class="signal-chip">🎯 Rentang ATR-14: Rp {curr_atr14:,.1f}</span>
             </div>
         </div>
@@ -299,14 +362,14 @@ with tab_radar:
             st.markdown(f'<div class="metric-custom-card {vol_grad}"><div class="metric-custom-label">Rasio Volume vs MA20</div><div class="metric-custom-value">{curr_vol_ratio:.1f}%</div><div class="metric-custom-badge">{vol_badge}</div></div>', unsafe_allow_html=True)
         with m3:
             st.markdown(f'<div class="metric-custom-card metric-card-cyan"><div class="metric-custom-label">ATR 14 (Volatilitas)</div><div class="metric-custom-value">Rp {curr_atr14:,.1f}</div><div class="metric-custom-badge">Rentang Fluktuasi Wajar</div></div>', unsafe_allow_html=True)
-        buyer_badge = "🔥 Dominan Akumulasi" if top3_buyer > 50 else "Normal (< 50%)"
-        buyer_grad = "metric-card-buyer-dom" if top3_buyer > 50 else "metric-card-buyer-norm"
+        buyer_badge = f"{top3_buyer_codes} • {int(net_buy_lot_top3):,} Lot"
+        buyer_grad = "metric-card-buyer-dom" if top3_buyer_pct > 50 else "metric-card-buyer-norm"
         with m4:
-            st.markdown(f'<div class="metric-custom-card {buyer_grad}"><div class="metric-custom-label">Top 3 Buyer</div><div class="metric-custom-value">{top3_buyer:.1f}%</div><div class="metric-custom-badge">{buyer_badge}</div></div>', unsafe_allow_html=True)
-        seller_badge = "⚠️ Tekanan Distribusi" if top3_seller > 50 else "Terkendali (< 50%)"
-        seller_grad = "metric-card-seller-dom" if top3_seller > 50 else "metric-card-seller-norm"
+            st.markdown(f'<div class="metric-custom-card {buyer_grad}"><div class="metric-custom-label">Top 3 Buyer</div><div class="metric-custom-value">{top3_buyer_pct:.1f}%</div><div class="metric-custom-badge">{buyer_badge}</div></div>', unsafe_allow_html=True)
+        seller_badge = f"{top3_seller_codes} • {int(net_sell_lot_top3):,} Lot"
+        seller_grad = "metric-card-seller-dom" if top3_seller_pct > 50 else "metric-card-seller-norm"
         with m5:
-            st.markdown(f'<div class="metric-custom-card {seller_grad}"><div class="metric-custom-label">Top 3 Seller</div><div class="metric-custom-value">{top3_seller:.1f}%</div><div class="metric-custom-badge">{seller_badge}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-custom-card {seller_grad}"><div class="metric-custom-label">Top 3 Seller</div><div class="metric-custom-value">{top3_seller_pct:.1f}%</div><div class="metric-custom-badge">{seller_badge}</div></div>', unsafe_allow_html=True)
 
         st.markdown("---")
         st.subheader("💾 Form Input Harian (Catat ke Database Google Sheets)")
@@ -316,21 +379,25 @@ with tab_radar:
                 form_tanggal = st.date_input("Tanggal Sesi:", value=date.today())
                 form_ticker = st.text_input("Kode Saham (Ticker):", value=ticker_input)
                 form_name = st.text_input("Nama Emiten:", value=stock_name_input)
+                form_freq = st.number_input("Total Frekuensi:", value=int(freq_input), step=100)
             with f_col2:
                 form_close = st.number_input("Harga Penutupan (Close):", value=float(curr_close), step=25.0)
                 form_change = st.number_input("Perubahan Harga (%):", value=float(curr_price_change), step=0.1)
                 form_ratio = st.number_input("Rasio Volume (%):", value=float(curr_vol_ratio), step=1.0)
+                form_atr = st.number_input("ATR-14:", value=float(curr_atr14), step=5.0)
             with f_col3:
-                form_freq = st.number_input("Total Frekuensi:", value=int(freq_input), step=100)
-                form_buyer = st.number_input("Top 3 Buyer (%):", value=float(top3_buyer), step=0.5)
-                form_seller = st.number_input("Top 3 Seller (%):", value=float(top3_seller), step=0.5)
+                form_buyer_broker = st.text_input("Kode Top 3 Buyer:", value=top3_buyer_codes)
+                form_buyer_lot = st.number_input("Top 3 Buyer Lot:", value=int(net_buy_lot_top3), step=1000)
+                form_buyer_pct = st.number_input("Top 3 Buyer (%):", value=float(round(top3_buyer_pct, 2)), step=0.1)
+                form_seller_broker = st.text_input("Kode Top 3 Seller:", value=top3_seller_codes)
+                form_seller_lot = st.number_input("Top 3 Seller Lot:", value=int(net_sell_lot_top3), step=1000)
+                form_seller_pct = st.number_input("Top 3 Seller (%):", value=float(round(top3_seller_pct, 2)), step=0.1)
 
             f_sig_col1, f_sig_col2 = st.columns([1, 2])
             with f_sig_col1:
                 form_signal = st.selectbox("Sinyal Rekomendasi:", ["BUY (Akumulasi Besar)", "SELL (Distribusi Guyuran)", "HOLD / WAIT & SEE"], index=0 if signal == "BUY" else 1 if signal == "SELL" else 2)
-                form_atr = st.number_input("ATR-14:", value=float(curr_atr14), step=5.0)
             with f_sig_col2:
-                form_notes = st.text_area("Catatan / Rencana Trading:", value=f"Sinyal: {badge_label}. Rasio Vol {curr_vol_ratio:.1f}%.")
+                form_notes = st.text_area("Catatan / Rencana Trading:", value=f"Sinyal: {badge_label}. Rasio Vol {curr_vol_ratio:.1f}%. Top 3 Buyer: {top3_buyer_codes} ({top3_buyer_pct:.1f}%), Top 3 Seller: {top3_seller_codes} ({top3_seller_pct:.1f}%).")
 
             submit_save_db = st.form_submit_button("💾 Simpan ke Database", use_container_width=True)
             if submit_save_db:
@@ -344,8 +411,12 @@ with tab_radar:
                     "Volume Ratio %": form_ratio,
                     "ATR 14": form_atr,
                     "Frekuensi": form_freq,
-                    "Top 3 Buyer %": form_buyer,
-                    "Top 3 Seller %": form_seller,
+                    "Top 3 Buyer Broker": form_buyer_broker,
+                    "Top 3 Buyer Lot": int(form_buyer_lot),
+                    "Top 3 Buyer %": form_buyer_pct,
+                    "Top 3 Seller Broker": form_seller_broker,
+                    "Top 3 Seller Lot": int(form_seller_lot),
+                    "Top 3 Seller %": form_seller_pct,
                     "Sinyal Aksi": form_signal,
                     "Catatan Trader": form_notes
                 }
