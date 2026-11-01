@@ -1,4 +1,6 @@
-streamlit
-pandas
-yfinance
-plotly
+streamlit>=1.30.0
+pandas>=2.0.0
+numpy>=1.24.0
+yfinance>=0.2.35
+plotly>=5.18.0
+st-gsheets-connection>=0.1.0
