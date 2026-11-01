@@ -15,6 +15,8 @@ import yfinance as yf
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, date
+import os
+import json
 
 try:
     from streamlit_gsheets import GSheetsConnection
@@ -92,13 +94,42 @@ if "prev_signal" not in st.session_state:
     st.session_state.prev_signal = None
 if "alert_dismissed" not in st.session_state:
     st.session_state.alert_dismissed = False
-if "watchlist" not in st.session_state:
-    st.session_state.watchlist = [
+WATCHLIST_FILE = "watchlist_stocks.json"
+
+def load_default_watchlist():
+    if os.path.exists(WATCHLIST_FILE):
+        try:
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    return data
+        except Exception:
+            pass
+    return [
         {"ticker": "BBCA.JK", "name": "Bank Central Asia Tbk"},
         {"ticker": "BBRI.JK", "name": "Bank Rakyat Indonesia Tbk"},
-        {"ticker": "TLKM.JK", "name": "Telkom Indonesia Tbk"},
         {"ticker": "BMRI.JK", "name": "Bank Mandiri Tbk"},
+        {"ticker": "BBNI.JK", "name": "Bank Negara Indonesia Tbk"},
+        {"ticker": "TLKM.JK", "name": "Telkom Indonesia Tbk"},
+        {"ticker": "ASII.JK", "name": "Astra International Tbk"},
+        {"ticker": "UNVR.JK", "name": "Unilever Indonesia Tbk"},
+        {"ticker": "ICBP.JK", "name": "Indofood CBP Sukses Makmur Tbk"},
+        {"ticker": "INDF.JK", "name": "Indofood Sukses Makmur Tbk"},
+        {"ticker": "KLBF.JK", "name": "Kalbe Farma Tbk"},
+        {"ticker": "ADRO.JK", "name": "Adaro Energy Indonesia Tbk"},
+        {"ticker": "PTBA.JK", "name": "Bukit Asam Tbk"},
+        {"ticker": "PGAS.JK", "name": "Perusahaan Gas Negara Tbk"},
+        {"ticker": "ANTM.JK", "name": "Aneka Tambang Tbk"},
+        {"ticker": "MDKA.JK", "name": "Merdeka Copper Gold Tbk"},
+        {"ticker": "INCO.JK", "name": "Vale Indonesia Tbk"},
+        {"ticker": "AMMN.JK", "name": "Amman Mineral Internasional Tbk"},
+        {"ticker": "GOTO.JK", "name": "GoTo Gojek Tokopedia Tbk"},
+        {"ticker": "CPIN.JK", "name": "Charoen Pokphand Indonesia Tbk"},
+        {"ticker": "BRIS.JK", "name": "Bank Syariah Indonesia Tbk"},
     ]
+
+if "watchlist" not in st.session_state:
+    st.session_state.watchlist = load_default_watchlist()
 if "active_ticker" not in st.session_state:
     st.session_state.active_ticker = "BBCA.JK"
 if "active_name" not in st.session_state:
@@ -188,22 +219,36 @@ with st.sidebar.expander("📊 Menu: Hubungkan Google Sheets", expanded=False):
     else:
         st.info("💡 Hubungkan Google Sheets via Secrets Streamlit Cloud untuk simpan permanen tab 'Watchlist' & 'Jurnal_Harian'.")
 
-st.sidebar.subheader("⭐ My Watchlist")
-watchlist_options = [f"{item['ticker']} - {item['name'][:18]}" for item in st.session_state.watchlist]
-current_selection_index = 0
-for idx, item in enumerate(st.session_state.watchlist):
-    if item['ticker'].upper() == st.session_state.active_ticker.upper():
-        current_selection_index = idx
-        break
+st.sidebar.subheader("⭐ My Watchlist Saham")
+st.sidebar.caption(f"📁 Sumber: watchlist_stocks.json ({len(st.session_state.watchlist)} Saham)")
 
-selected_watch = st.sidebar.selectbox("Pilih Cepat Saham:", watchlist_options, index=current_selection_index if watchlist_options else 0)
-if selected_watch and st.session_state.watchlist:
-    selected_idx = watchlist_options.index(selected_watch)
-    target_item = st.session_state.watchlist[selected_idx]
-    if target_item['ticker'].upper() != st.session_state.active_ticker.upper():
-        st.session_state.active_ticker = target_item['ticker'].upper()
-        st.session_state.active_name = target_item['name']
+search_wl = st.sidebar.text_input("🔍 Cari di Watchlist:", placeholder="Ketik ticker / nama saham...", key="search_wl_input").strip().lower()
+filtered_wl = [item for item in st.session_state.watchlist if not search_wl or search_wl in item['ticker'].lower() or search_wl in item['name'].lower()]
+
+st.sidebar.markdown("**Pilih Saham (Scroll ke Bawah):**")
+try:
+    wl_scroll_container = st.sidebar.container(height=260)
+except TypeError:
+    wl_scroll_container = st.sidebar.container()
+
+with wl_scroll_container:
+    for idx, item in enumerate(filtered_wl):
+        is_active = item['ticker'].upper() == st.session_state.active_ticker.upper()
+        btn_label = f"🟢 {item['ticker']} • {item['name'][:18]}" if is_active else f"⚪ {item['ticker']} • {item['name'][:18]}"
+        if st.button(btn_label, key=f"btn_wl_{item['ticker']}_{idx}", use_container_width=True):
+            if not is_active:
+                st.session_state.active_ticker = item['ticker'].upper()
+                st.session_state.active_name = item['name']
+                st.rerun()
+
+col_wl_act1, col_wl_act2 = st.sidebar.columns([3, 2])
+with col_wl_act1:
+    if st.button("🔄 Reload JSON", use_container_width=True):
+        st.session_state.watchlist = load_default_watchlist()
+        st.sidebar.success("Watchlist diperbarui!")
         st.rerun()
+with col_wl_act2:
+    st.caption(f"Total: {len(st.session_state.watchlist)}")
 
 ticker_input = st.sidebar.text_input("Input Kode Saham (Ticker)", value=st.session_state.active_ticker).strip().upper()
 st.session_state.active_ticker = ticker_input
